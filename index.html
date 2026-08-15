@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <link href="/front/index.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRANSPF</title>
+</head>
+<body>
+    <h1>Transpf - Transcrições</h1>
+
+    <input type="file" id="fileInput" accept="application/pdf" />
+    <button id="processButton">Enviar PDFs</button>
+    <div id="result"></div>
+    <pre id="rawText" style="white-space:pre-wrap; background:#f6f6f6; padding:8px; border:1px solid #ddd; display:none"></pre>
+<script>
+  async function uploadFile() {
+    const fileInput = document.getElementById("fileInput");
+    const btn = document.getElementById("processButton");
+    if (!fileInput.files.length) {
+      alert("Selecione um arquivo PDF primeiro!");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    try {
+      btn.disabled = true;
+      const response = await fetch("/api/transcricoes", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro na requisição: " + response.status);
+      }
+
+      const data = await response.json();
+      renderTable(data.dados);
+      const resultDiv = document.getElementById("result");
+      if (data.excel_url) {
+        resultDiv.innerHTML += `<p><a href="${data.excel_url}" target="_blank">Baixar Excel</a></p>`;
+      }
+      // mostra raw para depuração
+      if (data.raw) {
+        const rawEl = document.getElementById('rawText');
+        rawEl.style.display = 'block';
+        rawEl.innerText = data.raw;
+      }
+    } catch (error) {
+      console.error("Erro ao enviar PDF:", error);
+      document.getElementById("result").innerHTML =
+        `<p style='color:red'>Falha ao enviar PDF. Verifique se o backend está rodando.</p><pre style='white-space:pre-wrap;background:#fee;padding:8px;border:1px solid #fbb'>${error}</pre>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderTable(dados) {
+    let html = "<h2>Dados extraídos</h2>";
+    html += "<table>";
+    html += "<tr><th>Campo</th><th>Valor</th></tr>";
+    for (const [key, value] of Object.entries(dados)) {
+      const highlight = value === "?" ? "class='highlight'" : "";
+      html += `<tr ${highlight}><td>${key}</td><td contenteditable="true">${value}</td></tr>`;
+    }
+    html += "</table>";
+    document.getElementById("result").innerHTML = html;
+  }
+
+  // conecta o botão ao envio
+  document.getElementById("processButton").addEventListener("click", uploadFile);
+</script>
+
+</body>
+</html>
