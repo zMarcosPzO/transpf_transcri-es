@@ -10,9 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 def extract_text(file):
-    """Extrai texto de um PDF usando pdfplumber"""
+ 
     try:
-        # aceita tanto FileStorage quanto caminhos/streams
+      
         stream = getattr(file, 'stream', file)
         try:
             stream.seek(0)
@@ -30,18 +30,18 @@ def extract_text(file):
         return f"Erro ao processar PDF: {e}"
 
 def parse_data(text):
-    """Procura informações básicas no texto"""
+  
     if not text:
         return {'nome': '?', 'salario': '?', 'horas': '?'}
 
-    # remove acentos e normaliza para facilitar buscas
+ 
     def norm(s):
         return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII').lower()
 
     ntext = norm(text)
     dados = {}
 
-    # 1) tentar extrair nome a partir de linhas como 'EMPREGADO: NOME CARGO:'
+  
     m_emp = re.search(r'EMPREGADO:\s*(.+?)(?:\s+CARGO:|\n|$)', text, flags=re.IGNORECASE)
     if m_emp:
         nome = m_emp.group(1).strip()
@@ -50,18 +50,18 @@ def parse_data(text):
         nome = m_nome.group(1).strip().title() if m_nome else "?"
     dados['nome'] = nome
 
-    # 2) tentar extrair salário a partir de 'REMUNERAÇÕES' ou 'SALÁRIO'
+
     m_rem = re.search(r'remunerac(?:oes|oes|ÃES|AÇÕES)?[:\s]*([0-9]{1,3}[0-9.,\s]*)', ntext)
     if not m_rem:
         m_rem = re.search(r'salario:\s*([0-9.,]+)', ntext)
     if m_rem:
-        # pega o primeiro número válido na captura
+      
         nums = re.findall(r'[0-9]+[.,][0-9]{2}', m_rem.group(1))
         dados['salario'] = nums[0] if nums else m_rem.group(1).strip()
     else:
         dados['salario'] = "?"
 
-    # 3) tentar extrair horas a partir de 'DIAS/HORASTRAB' ou 'HORAS'
+
     m_dh = re.search(r'dias/?horastrab[:\s]*([0-9.,]+)', ntext)
     if not m_dh:
         m_dh = re.search(r'horas?:\s*([0-9.,]+)', ntext)
@@ -74,7 +74,7 @@ def parse_data(text):
 
 @app.route("/api/transcricoes", methods=["POST"])
 def upload_pdf():
-    """Recebe PDF, extrai texto e gera Excel"""
+   
     if 'file' not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
 
@@ -82,7 +82,7 @@ def upload_pdf():
     text = extract_text(file)
     dados = parse_data(text)
 
-    # Cria DataFrame e salva em Excel
+
     df = pd.DataFrame([dados])
     output_path = os.path.join("resultado.xlsx")
     try:
@@ -121,5 +121,5 @@ def download_result():
     return jsonify({"error": "Arquivo não encontrado"}), 404
 
 if __name__ == "__main__":
-    # roda na interface 0.0.0.0 para permitir acesso na rede local
+
     app.run(host="0.0.0.0", debug=True)
